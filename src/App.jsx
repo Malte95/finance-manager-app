@@ -64,7 +64,15 @@ function App() {
       <td>{c.amount} €</td>
       <td>{c.dueDate}</td>
       <td>
-      <button type="button" onClick={() => handleDelete(c.id)}>Löschen</button>
+      <button
+       type="button"
+        onClick={() => {
+        const ok = window.confirm(`Eintrag "${c.title}" wirklich löschen?`);
+        if (ok)  handleDelete(c.id);
+      }}
+        >
+          Löschen
+          </button>
 
       </td>
     </tr>
