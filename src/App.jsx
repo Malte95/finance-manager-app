@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
 
 function App() { 
@@ -15,8 +13,10 @@ function App() {
   const [dateError, setDateError] = useState("");
   const [categoryError, setCategoryError] = useState("");
   const [editingId, setEditingId] = useState(null);
-  const isEditing = editingId !== null;   
-
+  const isEditing = editingId !== null;  
+  const [filterCategory, setFilterCategory] = useState("");
+  const [searchTitle, setSearchTitle] = useState("");
+  const euro = Intl.NumberFormat("de-DE", {style: "currency", currency: "EUR"});
 
   function handleAdd() {
 
@@ -108,13 +108,6 @@ setTitle("");
     setCategory(item.category);
   }
 
-  function handleCancel() {
-    setEditingId(null);
-    setTitle("");
-    setAmount("");
-    setDueDate("");
-    setCategory("");
-  }
   
   function handleCancel() {
     setEditingId(null);
@@ -130,7 +123,28 @@ setTitle("");
     setCategoryError("");
   }
   
+  const filtered = contracts
+  .filter(c => {
+   
+    if (filterCategory && c.category !== filterCategory) return false;
+    return true;
+  })
+  .filter(c => {
+    if(searchTitle && !c.title.toLowerCase().includes(searchTitle.toLowerCase()) ) return false; 
+    return true;
+  })
 
+  const filteredSum = filtered.reduce((acc, c) => acc + c.amount, 0);
+  
+
+  function resetFilters() {
+    setFilterCategory("");
+    setSearchTitle("");
+  }
+
+  function formatDate(isoYmd) {
+    return new Date(isoYmd + "T00:00:00").toLocaleDateString("de-DE");
+  }
  
 
   
@@ -140,6 +154,17 @@ setTitle("");
       
       <h1>Mein Finanzmanager</h1>
 
+      <select value={filterCategory} onChange = {(e) => {setFilterCategory(e.target.value)}}>
+        <option value="">Alle</option>
+        <option value="Versicherung">Versicherung</option>
+        <option value="Telefon">Telefon</option>
+        <option value="Strom">Strom</option>
+      </select>
+      <input type="text" value={searchTitle} onChange = {(e) => {setSearchTitle(e.target.value)}}></input>
+      <button type="button" onClick={resetFilters} disabled={!filterCategory && !searchTitle}>Filter zurücksetzten</button>
+      
+
+
       <table border="1" cellPadding="5" style={{ marginTop: "20px" }}>
   <thead>
     <tr>
@@ -147,16 +172,24 @@ setTitle("");
       <th>Kategorie</th>
       <th>Betrag</th>
       <th>Datum</th>
+      <th>Aktionen</th>
     </tr>
   </thead>
   <tbody>
-  {contracts.map((c) => (
-    <tr key={c.id}>
-      <td>{c.title}</td>
-      <td>{c.category}</td>
-      <td>{c.amount} €</td>
-      <td>{c.dueDate}</td>
-      <td>
+  {filtered.length === 0 ? (
+    <tr>
+      <td colSpan="5" style={{ color: "gray", textAlign: "center" }}>
+        Kein Treffer
+      </td>
+    </tr>
+  ) : (
+    filtered.map((c) => (
+      <tr key={c.id}>
+        <td>{c.title}</td>
+        <td>{c.category}</td>
+        <td>{euro.format(c.amount)}</td>
+        <td>{formatDate(c.dueDate)}</td>
+        <td>
       <button
        type="button"
         onClick={() => {
@@ -175,13 +208,15 @@ setTitle("");
 
       </td>
     </tr>
-  ))}
+  ))
+  )}
 </tbody>
 
 
 </table>
 
-<p>Gesamtsumme: {summe} €</p>
+<p>Gesamtsumme: {euro.format(summe)} </p>
+<p>Summe: {euro.format(filteredSum)}</p>
 
 
 <h2>Neuer Vertrag</h2>
@@ -216,6 +251,7 @@ style={{display: "block", marginBottom: "10px"}}>
 <input
 type="date"
 value={dueDate}
+min={new Date().toISOString().split("T")[0]}
 onChange={(e) => {
   setDueDate(e.target.value);
   setDateError("");
