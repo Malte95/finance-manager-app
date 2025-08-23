@@ -14,10 +14,11 @@ function App() {
   const [titleError, setTitleError] = useState("");
   const [dateError, setDateError] = useState("");
   const [categoryError, setCategoryError] = useState("");
+  const [editingId, setEditingId] = useState(null);
+  const isEditing = editingId !== null;   
 
 
   function handleAdd() {
-    //if (!title || !amount || !dueDate) return;
 
 
     const t = title.trim();
@@ -59,6 +60,24 @@ if(!category){
 }
 setCategoryError("");
 
+if(editingId !== null) {
+  setContracts(prev =>
+    prev.map(c =>
+      c.id === editingId
+        ? { ...c, title: title.trim(), amount: Number(amount), dueDate, category }
+        : c
+    )
+  );
+setEditingId(null);
+setTitle("");
+  setAmount("");
+  setDueDate("");
+  setCategory("");
+
+  return;
+
+}
+
     const newContract = {
       id: crypto.randomUUID(),
       title: title.trim(),
@@ -79,12 +98,42 @@ setCategoryError("");
   function handleDelete(contractId) {
     setContracts(prev => prev.filter(c => c.id !== contractId));
   }
+
+  function handleEdit(id) {
+    setEditingId(id);
+    const item = contracts.find(c => c.id === id)
+    setTitle(item.title);
+    setAmount(String(item.amount));
+    setDueDate(item.dueDate);
+    setCategory(item.category);
+  }
+
+  function handleCancel() {
+    setEditingId(null);
+    setTitle("");
+    setAmount("");
+    setDueDate("");
+    setCategory("");
+  }
+  
+  function handleCancel() {
+    setEditingId(null);
+    setTitle("");
+    setAmount("");
+    setDueDate("");
+    setCategory("");
+  
+    
+    setTitleError("");
+    setAmountError("");
+    setDateError("");
+    setCategoryError("");
+  }
   
 
  
 
   
- 
 
   return (
     <>
@@ -117,6 +166,12 @@ setCategoryError("");
         >
           Löschen
           </button>
+
+          <button 
+          type="button"
+          onClick={() => {
+            handleEdit(c.id);
+          }}>Edit</button>
 
       </td>
     </tr>
@@ -185,7 +240,16 @@ style={{display: "block", marginBottom: "10px"}}>
 <p>Vorschau Titel: {title}</p>
 <p>Vorschau Betrag: {amount}</p>
 <p>Vorschau Datum: {dueDate}</p>
-<button type="button" onClick={handleAdd} style={{display: "block", marginBottom: "10px"}}>Hinzufügen</button>
+<button type="button" onClick={handleAdd} style={{display: "block", marginBottom: "10px", backgroundColor: isEditing? "green" : "blue", color: "white"}}>{editingId ? "Speichern" : "Hinzufügen"}</button>
+{isEditing && (
+  <button
+    type="button"
+    onClick={handleCancel}
+    style={{ display: "block", marginBottom: "10px", backgroundColor: "red", color: "white" }}
+  >
+    Abbrechen
+  </button>
+)}
 
 
 
