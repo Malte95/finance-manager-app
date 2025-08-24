@@ -17,6 +17,8 @@ function App() {
   const [filterCategory, setFilterCategory] = useState("");
   const [searchTitle, setSearchTitle] = useState("");
   const euro = Intl.NumberFormat("de-DE", {style: "currency", currency: "EUR"});
+  const [sortBy, setSortBy] = useState(null);
+  const [sortDir, setSortDir] = useState("asc");
 
   function handleAdd() {
 
@@ -134,7 +136,37 @@ setTitle("");
     return true;
   })
 
+  const sorted = [...filtered];
+
   const filteredSum = filtered.reduce((acc, c) => acc + c.amount, 0);
+
+  if(sortBy) {
+    const dir = sortDir === "asc" ? 1 : -1
+
+    sorted.sort((a,b) => {
+      if (sortBy === "title") {
+        const ta = (a.title || "").toLowerCase();
+        const tb = (b.title || "").toLowerCase();
+        if (ta < tb) return -1 * dir;
+        if (ta > tb) return  1 * dir;
+        return 0;
+      }
+
+
+      if (sortBy === "amount") {
+        return dir * (a.amount - b.amount);
+      }
+
+      if (sortBy === "dueDate") {
+        const da = Date.parse(a.dueDate);
+        const db = Date.parse(b.dueDate);
+        return dir * (da - db);
+      }
+
+      return 0;
+
+    })
+  }
   
 
   function resetFilters() {
@@ -144,6 +176,17 @@ setTitle("");
 
   function formatDate(isoYmd) {
     return new Date(isoYmd + "T00:00:00").toLocaleDateString("de-DE");
+  }
+
+  function handleSort(column) { 
+   if (sortBy !== column) {
+    setSortBy(column)
+    setSortDir("asc");
+   } else {
+    setSortDir(prev => (prev === "asc" ? "desc" : "asc"));
+   }
+   
+
   }
  
 
@@ -168,10 +211,10 @@ setTitle("");
       <table border="1" cellPadding="5" style={{ marginTop: "20px" }}>
   <thead>
     <tr>
-      <th>Titel</th>
+      <th><button type="button" onClick={() => handleSort("title")} style= {{background: "transparent", border: "none", cursor: "pointer"}}>Titel</button></th>
       <th>Kategorie</th>
-      <th>Betrag</th>
-      <th>Datum</th>
+      <th><button type="button" onClick={() => handleSort("amount")} style= {{background: "transparent", border: "none", cursor: "pointer"}}>Betrag</button></th>
+      <th><button type="button" onClick={() => handleSort("dueDate")} style= {{background: "transparent", border: "none", cursor: "pointer"}}>Datum</button></th>
       <th>Aktionen</th>
     </tr>
   </thead>
@@ -183,7 +226,7 @@ setTitle("");
       </td>
     </tr>
   ) : (
-    filtered.map((c) => (
+    sorted.map((c) => (
       <tr key={c.id}>
         <td>{c.title}</td>
         <td>{c.category}</td>
