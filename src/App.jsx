@@ -185,9 +185,12 @@ setTitle("");
    } else {
     setSortDir(prev => (prev === "asc" ? "desc" : "asc"));
    }
-   
+   }
 
-  }
+   function arrowFor(column) {
+    if (sortBy !== column) return "⬆️⬇️";
+    return sortDir === "asc" ? "⬆️" : "⬇️";
+   }
  
 
   
@@ -211,10 +214,38 @@ setTitle("");
       <table border="1" cellPadding="5" style={{ marginTop: "20px" }}>
   <thead>
     <tr>
-      <th><button type="button" onClick={() => handleSort("title")} style= {{background: "transparent", border: "none", cursor: "pointer"}}>Titel</button></th>
+
+      <th><button 
+      type="button" 
+      onClick={() => handleSort("title")} 
+      style= {{background: "transparent", border: "none", cursor: "pointer"}}
+      >
+        <span>Titel</span>
+        <span>{arrowFor("title")}</span>
+        </button>
+        </th>
+
       <th>Kategorie</th>
-      <th><button type="button" onClick={() => handleSort("amount")} style= {{background: "transparent", border: "none", cursor: "pointer"}}>Betrag</button></th>
-      <th><button type="button" onClick={() => handleSort("dueDate")} style= {{background: "transparent", border: "none", cursor: "pointer"}}>Datum</button></th>
+      <th><button
+       type="button"
+        onClick={() => handleSort("amount")}
+         style= {{background: "transparent", border: "none", cursor: "pointer"}}
+         >
+          <span>Betrag</span>
+          <span>{arrowFor("amount")}</span>
+          </button>
+          </th>
+
+      <th><button
+       type="button"
+        onClick={() => handleSort("dueDate")}
+         style= {{background: "transparent", border: "none", cursor: "pointer"}}
+         >
+          <span>Datum</span>
+          <span>{arrowFor("dueDate")}</span>
+          </button>
+          </th>
+          
       <th>Aktionen</th>
     </tr>
   </thead>
