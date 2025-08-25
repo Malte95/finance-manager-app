@@ -21,7 +21,19 @@ function App() {
   const [sortDir, setSortDir] = useState("asc");
   const [progress, setProgress] = useState(0);
 
-  function handleAdd() {
+  useEffect(() =>  {
+async function load() {
+  const res = await fetch("http://localhost:3000/contracts");
+  console.log("Status:", res.status);
+
+  const data = await res.json();
+  setContracts(data);
+}
+load();
+  }, []); 
+
+  async function handleAdd() {
+
 
 
     const t = title.trim();
@@ -64,10 +76,23 @@ if(!category){
 setCategoryError("");
 
 if(editingId !== null) {
+  console.log("EDIT-Zweig aktiv für id:", editingId);
+  const patch = { title: title.trim(), amount: Number(amount), dueDate, category };
+  const res = await fetch("http://localhost:3000/contracts/" + editingId, {
+  method: "PATCH",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(patch),
+});
+if(!res.ok){
+  alert("Update fehlgeschlagen: " + res.status )
+  return;
+}
+const update = await res.json();
+
   setContracts(prev =>
     prev.map(c =>
       c.id === editingId
-        ? { ...c, title: title.trim(), amount: Number(amount), dueDate, category }
+        ? update
         : c
     )
   );
@@ -81,24 +106,38 @@ setTitle("");
 
 }
 
-    const newContract = {
-      id: crypto.randomUUID(),
-      title: title.trim(),
-      amount: Number(amount),
-      dueDate: dueDate,
-      category: category || "-"
-    };
+const body = {title: t, amount: n, dueDate, category};
+console.log("POST body Vorschau:", body); 
+
+try {
+  const res = await fetch("http://localhost:3000/contracts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title: t, amount: n, dueDate, category }),
+  });
+  if (!res.ok) throw new Error("Fehler beim Speichern: " + res.status);
+  const saved = await res.json(); // enthält u.a. die vom Server vergebene id
+
+  // In den State übernehmen:
+  setContracts(prev => [...prev, saved]);
+
+  // Felder leeren:
+  setTitle("");
+  setAmount("");
+  setDueDate("");
+  setCategory("");
+} catch (err) {
+  console.error(err);
+  alert("Konnte nicht speichern (läuft json-server?)");
+}
+
 
   
-    setContracts(prev => [...prev, newContract]);
-  
-    setTitle("");
-    setAmount("");
-    setDueDate("");
-    setCategory("");
+    
   }
 
-  function handleDelete(contractId) {
+  async function handleDelete(contractId) {
+    const res = await fetch("http://localhost:3000/contracts/" + contractId, {method: "DELETE"});
     setContracts(prev => prev.filter(c => c.id !== contractId));
   }
 
