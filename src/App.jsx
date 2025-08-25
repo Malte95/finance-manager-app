@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 
 function App() { 
@@ -19,6 +19,7 @@ function App() {
   const euro = Intl.NumberFormat("de-DE", {style: "currency", currency: "EUR"});
   const [sortBy, setSortBy] = useState(null);
   const [sortDir, setSortDir] = useState("asc");
+  const [progress, setProgress] = useState(0);
 
   function handleAdd() {
 
@@ -138,6 +139,25 @@ setTitle("");
 
   const sorted = [...filtered];
 
+  const totalsByCategory = {};
+
+  for (const c of filtered) {
+    const key = c.category;
+    const prev = totalsByCategory[key] ?? 0;
+    totalsByCategory[key] = prev + c.amount; 
+  }
+
+  const totalsArray = Object.entries(totalsByCategory).map(([category, total]) => ({
+category,
+total
+  }));
+  
+  
+const globalTotal = contracts.reduce((s, c) => s + c.amount, 0);
+
+  const totalSum = totalsArray.reduce((s, x) => s + x.total, 0);
+
+
   const filteredSum = filtered.reduce((acc, c) => acc + c.amount, 0);
 
   if(sortBy) {
@@ -191,6 +211,42 @@ setTitle("");
     if (sortBy !== column) return "⬆️⬇️";
     return sortDir === "asc" ? "⬆️" : "⬇️";
    }
+
+   useEffect(() => {
+    let rafId;
+    const start = performance.now();
+    const duration = 700; 
+  
+    const tick = (t) => {
+      const p = Math.min(1, (t - start) / duration);
+      setProgress(p);
+      if (p < 1) rafId = requestAnimationFrame(tick);
+    };
+  
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [filtered.length, totalSum]); 
+  
+  
+const CATEGORY_COLORS = {
+  Versicherung: "#3b82f6", 
+  Telefon: "#10b981",      
+  Strom: "#f59e0b"         
+};
+
+
+const FALLBACK_COLORS = ["#ef4444", "#8b5cf6", "#14b8a6", "#eab308", "#6366f1"];
+
+function hashString(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function colorFor(category) {
+  return CATEGORY_COLORS[category] ?? FALLBACK_COLORS[hashString(category) % FALLBACK_COLORS.length];
+}
+
  
 
   
@@ -291,6 +347,58 @@ setTitle("");
 
 <p>Gesamtsumme: {euro.format(summe)} </p>
 <p>Summe: {euro.format(filteredSum)}</p>
+
+
+<svg width="200" height="200">
+  <circle
+    cx="100"
+    cy="100"
+    r="80"
+    stroke="lightgray"
+    strokeWidth="40"
+    fill="none"
+  />
+
+<ul>
+  {totalsArray.map((x, i) => (
+    <li key={x.category} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{
+        width: 12, height: 12,
+        background: ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6"][i % 5],
+        display: "inline-block", borderRadius: 2
+      }} />
+      <span>{x.category}: {euro.format(x.total)}</span>
+    </li>
+  ))}
+</ul>
+
+{(() => {
+  const r = 80;                          
+  const c = 2 * Math.PI * r;           
+  let offset = 0;                         
+  const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"];
+
+  return totalsArray.map((item, i) => {
+    const frac = globalTotal > 0 ? item.total / globalTotal : 0;  
+    const dash = frac * c * progress;                                  
+    const el = (
+      <circle
+        key={item.category}
+        cx="100" cy="100" r={r}
+        fill="none"
+        stroke={colorFor(item.category)}
+        strokeWidth="40"
+        strokeDasharray={`${dash} ${c - dash}`}
+        strokeDashoffset={-offset}
+        transform="rotate(-90 100 100)"   
+        strokeLinecap="round"              
+      />
+    );
+    offset += dash;   
+    return el;
+  });
+})()}
+</svg>
 
 
 <h2>Neuer Vertrag</h2>
