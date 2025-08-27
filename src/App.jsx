@@ -20,14 +20,28 @@ function App() {
   const [sortBy, setSortBy] = useState(null);
   const [sortDir, setSortDir] = useState("asc");
   const [progress, setProgress] = useState(0);
-
-  useEffect(() =>  {
+  const [loadingList, setLoadingList] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
+ 
+useEffect(() =>  {
 async function load() {
+  setErrorMessage("");
+  setLoadingList(true);
+  try {
   const res = await fetch("http://localhost:3000/contracts");
-  console.log("Status:", res.status);
+  
+
+  if (!res.ok) throw new Error("Fehler beim Laden: " + res.status);
+
 
   const data = await res.json();
   setContracts(data);
+  } catch (err) {
+    setErrorMessage("Daten konnten nicht geladen werden. Läuft der json-server auf Port 3000?");
+
+  } finally {setLoadingList(false)}
 }
 load();
   }, []); 
@@ -76,7 +90,9 @@ if(!category){
 setCategoryError("");
 
 if(editingId !== null) {
-  console.log("EDIT-Zweig aktiv für id:", editingId);
+  setErrorMessage("");
+  setSaving(true);
+  try {
   const patch = { title: title.trim(), amount: Number(amount), dueDate, category };
   const res = await fetch("http://localhost:3000/contracts/" + editingId, {
   method: "PATCH",
@@ -84,8 +100,7 @@ if(editingId !== null) {
   body: JSON.stringify(patch),
 });
 if(!res.ok){
-  alert("Update fehlgeschlagen: " + res.status )
-  return;
+  throw new Error("Update fehlgeschlagen: " + res.status);
 }
 const update = await res.json();
 
@@ -101,34 +116,46 @@ setTitle("");
   setAmount("");
   setDueDate("");
   setCategory("");
+    } catch (err) {
+      setErrorMessage("Speichern fehlgeschlagen. Bitte später erneut versuchen.");
+      return;
+    } finally {
+      setSaving(false);
+    }
 
   return;
 
 }
 
 const body = {title: t, amount: n, dueDate, category};
-console.log("POST body Vorschau:", body); 
 
-try {
+
+
+  setErrorMessage("");
+  setSaving(true);
+  try {
   const res = await fetch("http://localhost:3000/contracts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title: t, amount: n, dueDate, category }),
   });
   if (!res.ok) throw new Error("Fehler beim Speichern: " + res.status);
-  const saved = await res.json(); // enthält u.a. die vom Server vergebene id
+  const saved = await res.json(); 
 
-  // In den State übernehmen:
+ 
   setContracts(prev => [...prev, saved]);
 
-  // Felder leeren:
+  
   setTitle("");
   setAmount("");
   setDueDate("");
   setCategory("");
-} catch (err) {
-  console.error(err);
-  alert("Konnte nicht speichern (läuft json-server?)");
+}
+ catch (err) {
+  setErrorMessage("Speichern fehlgeschlagen. Bitte später erneut versuchen.");
+  return
+} finally {
+  setSaving(false)
 }
 
 
@@ -137,10 +164,16 @@ try {
   }
 
   async function handleDelete(contractId) {
+    setErrorMessage("")
+    setDeletingId(contractId);
+    try {
     const res = await fetch("http://localhost:3000/contracts/" + contractId, {method: "DELETE"});
+    if (!res.ok) throw new Error("Löschen fehlgeschlagen: " + res.status);
     setContracts(prev => prev.filter(c => c.id !== contractId));
-  }
-
+  } catch (err) {setErrorMessage("Löschen fehlgeschlagen. Bitte später erneut versuchen.");}
+    finally {
+      setDeletingId(null);
+    } }
   function handleEdit(id) {
     setEditingId(id);
     const item = contracts.find(c => c.id === id)
@@ -304,6 +337,29 @@ function colorFor(category) {
       <input type="text" value={searchTitle} onChange = {(e) => {setSearchTitle(e.target.value)}}></input>
       <button type="button" onClick={resetFilters} disabled={!filterCategory && !searchTitle}>Filter zurücksetzten</button>
       
+      {errorMessage && (
+  <div
+    role="alert"
+    style={{
+      background: "#fee2e2",
+      color: "#991b1b",
+      padding: "8px 12px",
+      border: "1px solid #fecaca",
+      borderRadius: 6,
+      marginTop: 12
+    }}
+  >
+    {errorMessage}
+  </div>
+)}
+
+{loadingList &&  (
+  <p role="status" aria-live="polite" style={{ color: "#555", marginTop: 12 }}>
+    Lädt Daten …
+    <span className="spinner" aria-hidden="true"></span>
+  </p>
+)}
+
 
 
       <table border="1" cellPadding="5" style={{ marginTop: "20px" }}>
@@ -358,24 +414,31 @@ function colorFor(category) {
         <td>{c.category}</td>
         <td>{euro.format(c.amount)}</td>
         <td>{formatDate(c.dueDate)}</td>
+        
         <td>
-      <button
-       type="button"
-        onClick={() => {
-        const ok = window.confirm(`Eintrag "${c.title}" wirklich löschen?`);
-        if (ok)  handleDelete(c.id);
-      }}
-        >
-          Löschen
-          </button>
+  <button
+    type="button"
+    onClick={() => {
+      const ok = window.confirm(`Eintrag "${c.title}" wirklich löschen?`);
+      if (ok) handleDelete(c.id);
+    }}
+    disabled={deletingId === c.id || saving}
+  >
+     {deletingId === c.id ? <>
+     
+     Löscht… <span className="spinner" /></> : "Löschen"}
+</button>
 
-          <button 
-          type="button"
-          onClick={() => {
-            handleEdit(c.id);
-          }}>Edit</button>
+  <button
+    type="button"
+    onClick={() => handleEdit(c.id)}
+    disabled={saving || deletingId === c.id}
+  >
+    Edit
+  </button>
+</td>
 
-      </td>
+      
     </tr>
   ))
   )}
@@ -497,7 +560,8 @@ style={{display: "block", marginBottom: "10px"}}>
 <p>Vorschau Titel: {title}</p>
 <p>Vorschau Betrag: {amount}</p>
 <p>Vorschau Datum: {dueDate}</p>
-<button type="button" onClick={handleAdd} style={{display: "block", marginBottom: "10px", backgroundColor: isEditing? "green" : "blue", color: "white"}}>{editingId ? "Speichern" : "Hinzufügen"}</button>
+<button type="button" onClick={handleAdd} disabled={saving} style={{display: "block", marginBottom: "10px", backgroundColor: isEditing? "green" : "blue", color: "white"}}> {saving ? <>Speichert… <span className="spinner" /></> : (editingId ? "Speichern" : "Hinzufügen")}
+</button>
 {isEditing && (
   <button
     type="button"
